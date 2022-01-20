@@ -1,0 +1,32 @@
+population_data <- read.csv("C:/Users/jabella/Downloads/1.0 Data Scientist Toolbox Case/population.csv")
+population_data
+region_data <- read.csv("C:/Users/jabella/Downloads/1.0 Data Scientist Toolbox Case/regionarea.csv")
+region_data
+city_raw = merge(x = population_data, y = region_data, by = c('Region'), all.x = TRUE)
+
+# Get city count per region
+city_count = aggregate(CityProvince ~ Region, data = city_raw, FUN = function(x) length(unique(x)))
+names(city_count)[names(city_count) == 'CityProvince'] = 'CityCount'
+
+# Compute for city area given total region area and unique city count per area
+city_raw = merge(x = city_raw, y = city_count, by = c('Region'), all.x = TRUE)
+city_raw$CityArea = city_raw$Area / city_raw$CityCount 
+city_area = aggregate(CityArea ~ Region + Province + CityProvince, data = city_raw, FUN = max)
+city_area
+
+# Compute for total population per city
+city_population = aggregate(Population ~ Region + Province + CityProvince, data = city_raw, FUN = sum)
+names(city_population)[names(city_population) == 'Population'] = 'CityPopulation'
+city_raw = merge(x = city_population, y = city_area, by = c('Region', 'Province', 'CityProvince'), all.x = TRUE)
+
+# Compute for population density per city and get top 5
+city_raw$CityDensity = city_raw$CityPopulation / city_raw$CityArea
+top_cdensity = min(head(sort(city_raw$CityDensity,decreasing=TRUE),n=5))
+city_density = city_raw[city_raw$CityDensity >= top_cdensity, ]
+city_density = city_density[order(city_density[,"CityDensity"], decreasing = TRUE),]
+city_density
+
+# Compute for top 5 per region and per city
+city_density_rnk = city_raw[order(city_raw$CityDensity, decreasing = TRUE), ]
+city_density_reg = Reduce(rbind,by(city_density_rnk, city_density_rnk['Region'], head, n=5))
+city_density_reg[c('Region', 'Province', 'CityProvince', 'CityPopulation', 'CityArea', 'CityDensity')]
